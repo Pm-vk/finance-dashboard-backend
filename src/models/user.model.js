@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema({
         minlegth:[6,"Password must be at least 6 characters long"],
         select:false
     },
+    balance:{
+        type:Number,
+        default:0,
+        min:[0,"Balance cannot be negative"]
+    },
 },{
     timestamps:true
 })

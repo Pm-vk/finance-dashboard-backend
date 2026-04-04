@@ -22,6 +22,11 @@ const accountSchema=new mongoose.Schema({
         required:[true,"Currency is required"],
         default:"INR"
     },
+    balance:{
+        type:Number,
+        default:0,
+        min:[0,"Balance cannot be negative"]
+    },
 },{
     timestamps:true
 })
