@@ -1,16 +1,14 @@
 const mongoose=require("mongoose")
 
-function connectToDB(){
-    mongoose.connect(process.env.MONGO_URI)
-    .then(()=>{
-        console.log("Server is connected to DB")
-    })
-    .catch((error)=>{
-        console.log("Error in DB connection:", error)
-        process.exit(1);
-    })
-    
-
+function connectToDB() {
+    return mongoose.connect(process.env.MONGO_URI)
+        .then(() => {
+            console.log("✅ MongoDB Connected Successfully");
+        })
+        .catch((error) => {
+            console.error("❌ Error in DB connection:", error.message);
+            process.exit(1);
+        });
 }
 
 

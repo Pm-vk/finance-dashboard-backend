@@ -1,16 +1,12 @@
 const mongoose = require('mongoose');
 const userModel = require('../models/user.model');
 const transactionModel = require('../models/transaction.model');
+const logService = require('./log.service');
 
 /**
  * Perform a fund transfer between two users atomically with idempotency.
- * @param {string} senderId - ID of the sender (User)
- * @param {string} receiverId - ID of the receiver (User)
- * @param {number} amount - Amount to transfer
- * @param {string} idempotencyKey - Unique key to prevent duplicate transactions
- * @returns {Promise<Object>} - The created or existing transaction record
  */
-async function transferFunds(senderId, receiverId, amount, idempotencyKey) {
+async function transferFunds(senderId, receiverId, amount, idempotencyKey, notes = "Fund Transfer") {
     // 0. Check for existing transaction with the same idempotency key
     const existingTransaction = await transactionModel.findOne({ idempotencyKey });
     if (existingTransaction) {
@@ -22,7 +18,7 @@ async function transferFunds(senderId, receiverId, amount, idempotencyKey) {
     session.startTransaction();
 
     try {
-        // 1. Find and update sender's account with decrementing balance
+        // 1. Find and update sender's account
         const sender = await userModel.findOneAndUpdate(
             { _id: senderId, balance: { $gte: amount } },
             { $inc: { balance: -amount } },
@@ -33,7 +29,7 @@ async function transferFunds(senderId, receiverId, amount, idempotencyKey) {
             throw new Error("Insufficient balance or sender not found");
         }
 
-        // 2. Find and update receiver's account with incrementing balance
+        // 2. Find and update receiver's account
         const receiver = await userModel.findOneAndUpdate(
             { _id: receiverId },
             { $inc: { balance: amount } },
@@ -44,12 +40,15 @@ async function transferFunds(senderId, receiverId, amount, idempotencyKey) {
             throw new Error("Receiver not found");
         }
 
-        // 3. Create a transaction record
+        // 3. Create a transaction record with Category and Type (Zorvyn Requirement)
         const transaction = await transactionModel.create(
             [{
                 senderId,
                 receiverId,
                 amount,
+                type: "transfer",
+                category: "Other", // Generic category for transfers
+                notes,
                 status: "success",
                 idempotencyKey
             }],
@@ -60,46 +59,62 @@ async function transferFunds(senderId, receiverId, amount, idempotencyKey) {
         await session.commitTransaction();
         session.endSession();
 
+        logService.createLog(senderId, "TRANSFER", "success", { receiverId, amount, transactionId: transaction[0]._id });
+        
         return transaction[0];
 
     } catch (error) {
-        // Abort the transaction on error
         await session.abortTransaction();
         session.endSession();
 
-        // Optional: Save a failed transaction record here (outside the session) 
-        // to keep a history of failed attempts.
+        // Optional: Save a failed record
         try {
             await transactionModel.create({
                 senderId,
                 receiverId,
                 amount,
+                type: "transfer",
                 status: "failed",
                 idempotencyKey
             });
-        } catch (e) {
-            // Ignore if the key already exists (race condition)
-        }
+        } catch (e) {}
 
+        logService.createLog(senderId, "TRANSFER", "failed", { receiverId, amount, error: error.message });
         throw error;
     }
 }
 
 /**
- * Get all transactions for a specific user (as sender or receiver).
- * @param {string} userId - ID of the logged-in user
- * @param {Object} options - Pagination options { page, limit }
- * @returns {Promise<Object>} - Transactions and total count
+ * Get filtered and paginated transactions for a user.
+ * Supports filtering by type, category, and date range (Zorvyn Requirement 2).
  */
-async function getUserTransactions(userId, { page = 1, limit = 10 }) {
+async function getUserTransactions(userId, { 
+    page = 1, 
+    limit = 10, 
+    type, 
+    category, 
+    startDate, 
+    endDate 
+}) {
     const skip = (page - 1) * limit;
 
+    // 1. Base Query: User must be sender OR receiver
     const query = {
         $or: [
             { senderId: userId },
             { receiverId: userId }
         ]
     };
+
+    // 2. Add Filters
+    if (type) query.type = type;
+    if (category) query.category = category;
+    
+    if (startDate || endDate) {
+        query.createdAt = {};
+        if (startDate) query.createdAt.$gte = new Date(startDate);
+        if (endDate) query.createdAt.$lte = new Date(endDate);
+    }
 
     const transactions = await transactionModel.find(query)
         .sort({ createdAt: -1 })
@@ -118,9 +133,6 @@ async function getUserTransactions(userId, { page = 1, limit = 10 }) {
 
 /**
  * Get detailed info for a single transaction.
- * @param {string} transactionId - ID of the transaction
- * @param {string} userId - ID of the user requesting details
- * @returns {Promise<Object>} - Transaction details
  */
 async function getTransactionDetails(transactionId, userId) {
     const transaction = await transactionModel.findById(transactionId);
@@ -130,8 +142,10 @@ async function getTransactionDetails(transactionId, userId) {
     }
 
     // Check if user is either sender or receiver
-    if (transaction.senderId.toString() !== userId.toString() && 
-        transaction.receiverId.toString() !== userId.toString()) {
+    const isSender = transaction.senderId && transaction.senderId.toString() === userId.toString();
+    const isReceiver = transaction.receiverId && transaction.receiverId.toString() === userId.toString();
+
+    if (!isSender && !isReceiver) {
         throw new Error("You are not authorized to view this transaction");
     }
 

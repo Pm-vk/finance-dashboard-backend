@@ -4,13 +4,11 @@ const transactionSchema = new mongoose.Schema({
     senderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, "Sender ID is required"],
         index: true
     },
     receiverId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
-        required: [true, "Receiver ID is required"],
         index: true
     },
     amount: {
@@ -20,11 +18,22 @@ const transactionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: {
-            values: ["success", "failed"],
-            message: "Status must be success or failed"
-        },
+        enum: ["success", "failed"],
         default: "success"
+    },
+    type: {
+        type: String,
+        enum: ["income", "expense", "transfer"],
+        default: "transfer"
+    },
+    category: {
+        type: String,
+        enum: ["Salary", "Food", "Rent", "Investment", "Shopping", "Entertainment", "Other"],
+        default: "Other"
+    },
+    notes: {
+        type: String,
+        trim: true
     },
     idempotencyKey: {
         type: String,

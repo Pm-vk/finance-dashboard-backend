@@ -30,6 +30,16 @@ const userSchema = new mongoose.Schema({
         default:0,
         min:[0,"Balance cannot be negative"]
     },
+    role: {
+        type: String,
+        enum: ["Admin", "Analyst", "Viewer"],
+        default: "Viewer"
+    },
+    status: {
+        type: String,
+        enum: ["active", "inactive"],
+        default: "active"
+    }
 },{
     timestamps:true
 })
