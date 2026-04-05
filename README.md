@@ -1,5 +1,8 @@
 # Zorvyn Finance Dashboard - Submission Guide
 
+**Live API**: [https://finance-dashboard-backend-oryq.onrender.com](https://finance-dashboard-backend-oryq.onrender.com)  
+**Health Status**: [🟢 Active](https://finance-dashboard-backend-oryq.onrender.com/health)
+
 Welcome to the **Finance Data Processing and Access Control Backend**. This project was built to exceed the specific requirements of the Zorvyn Technical Challenge.
 
 ## 🚀 Architecture Overview

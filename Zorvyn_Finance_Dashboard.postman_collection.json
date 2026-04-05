@@ -287,7 +287,7 @@
 	"variable": [
 		{
 			"key": "base_url",
-			"value": "http://localhost:3000",
+			"value": "https://finance-dashboard-backend-oryq.onrender.com",
 			"type": "string"
 		}
 	]
