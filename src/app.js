@@ -18,7 +18,11 @@ app.use(cookieParser());
 
 // 2. Health Check
 app.get("/health", (req, res) => {
-    res.status(200).json({ status: "OK", uptime: process.uptime() });
+    res.status(200).json({ 
+        status: "OK", 
+        message: "API is running 🚀", 
+        uptime: process.uptime() 
+    });
 });
 
 // 3. Rate Limiting
