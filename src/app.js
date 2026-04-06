@@ -16,7 +16,16 @@ app.use(express.json({ limit: "16kb" })); // Limit body size for security
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 app.use(cookieParser());
 
-// 2. Health Check
+// 2. Health & Status
+app.get("/", (req, res) => {
+    res.status(200).json({ 
+        status: "success", 
+        message: "Welcome to Zap Finance API 🚀", 
+        documentation: "https://github.com/Pm-vk/finance-dashboard-backend",
+        postman: "Included in project root as Zorvyn_Finance_Dashboard.postman_collection.json"
+    });
+});
+
 app.get("/health", (req, res) => {
     res.status(200).json({ 
         status: "OK", 
